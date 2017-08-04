@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>My first D3.js diagram</title>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+</head>
+
+<body>
+
+<p>
+Axes not working properly yet. <br/>
+Move the mouse over the tiles to zoom in.
+</p>
+
+<figure class=chart>
+<figcaption>My diagram</figcaption>
+</figure>
+
+<script type="text/javascript">
+
+/* Data for visualizing. length(dat) must be N*M */
+var N = 4	// Number of columns
+var M = 5	// Number of rows
+var dat = [0, 1, 1, 1, 1, 3, 8, 4, 2, 10, 18, 12, 25, 20, 22, 24, 5, 7, 4, 8]	// Data
+
+/* Global variables */
+var L = 500		// Size of the squared canvas
+var l = L / (Math.max(N,M) + 1)		// Size of each squared tile
+var error_message = 'ERROR'
+var color_min = '#c4daff'	// Light blue
+var color_max = '#0f439b'	// Dark blue
+var color_scale = d3.scaleLinear()	// Scale from numeric data to colors
+		.domain(d3.extent(dat))
+		.range([color_min, color_max])
+var bot_axis_scale = d3.scaleLinear()	// Scale for vertical axis
+		.domain([-10,40])
+		.range([0, L])
+var right_axis_scale = d3.scaleLinear()		// Scale for horizontal axis
+		.domain([0, 24])
+		.range([0, L])
+		
+/* Function defined on D3 selections that brings an element to front */
+d3.selection.prototype.moveToFront = function() {
+	return this.each(function() {
+		this.parentNode.appendChild(this)
+	})
+}
+
+/* Checks if data dimensions are not specified properly */
+function sanity_check() {
+	return N*M == dat.length
+}
+
+/* Creates the canvas as an SVG element with a black border*/
+function create_canvas(width, height) {
+	var svg = d3.select('figure')
+		.append('svg')
+		.attr('width', width)
+		.attr('height', height)
+	
+	var border = svg.append('rect')
+		.attr('x', 0)
+		.attr('y', 0)
+		.attr('width', width)
+		.attr('height', height)
+		.attr('id', 'border')	// rect#border to distinguish from other rects on selection
+		.style('stroke', 'black')
+		.style('fill', 'none')
+		.style('stroke-width', 2)
+}
+
+/* Draws axes that explain dimensions on the heatmap */
+function draw_axes() {
+	var bot_axis = d3.axisBottom().scale(bot_axis_scale)
+	d3.select('svg')
+		.append('g')
+		.call(bot_axis)
+		
+	var right_axis = d3.axisRight().scale(right_axis_scale)
+	d3.select('svg')
+		.append('g')
+		.call(right_axis)
+}
+
+/* Draws N*M tiles with the proper color based on data */
+function draw_tiles() {
+	/*
+	If N!=M, the tiles need to be translated if we want them centred,
+	because the canvas is squared. To do so, we increase the offset
+	in the dimension that has fewer elements
+	*/
+	if (N>M) {
+		x_off = l/2
+		y_off = l/2 + (N-M)*l/2
+	} else {
+		x_off = l/2 + (M-N)*l/2
+		y_off = l/2
+	}
+		
+	d3.select('svg').selectAll('rect.border') 	
+		.data(dat)
+		.enter()
+		.append('rect')
+		.attr('x', function(d,i) { 
+			return(x_off + (i%N)*l) })		// x in [0..N-1]*l
+		.attr('y', function(d,i) { 
+			return(y_off + (parseInt(i/(M-1)))*l) })	// y in [0..M-1]*l
+		.attr('width', l)
+		.attr('height', l)
+		.style('stroke', 'black')
+		.style('fill', function(d) {	// Color uses scale defined above
+			return color_scale(d) }) 
+		.style('stroke-width', 1)
+		.on('mouseover', handle_mouse_over)		// Mouse event handlers
+		.on('mouseout', handle_mouse_out)
+}
+
+/* When mouse is over a tile, this tile doubles its size and shows the data value */
+function handle_mouse_over(d, i) {
+	/*
+	We're doubling size of the tile but want it centred, i.e. standing in the same
+	position as when it was not hovered. To do so, we move the upper-left corner
+	l/2 up and l/2 left.
+	*/
+	d3.select(this)
+		.attr('x', this.attributes.x.value - l/2)
+		.attr('y', this.attributes.y.value - l/2)
+		.attr('width', 2*l)
+		.attr('height', 2*l)
+		.moveToFront()	// Bring tile to front so it is not occluded by others
+		
+	x_ = parseFloat(this.attributes.x.value)
+	y_ = parseFloat(this.attributes.y.value)	
+	
+	/*
+	Print text from data value in the center of the tile. We achieve this by
+	writing it l pixels down and l pixels right from the upper-left corner
+	(remember the tile is now 2l x 2l).
+	*/
+	d3.select('svg')
+		.append('text')
+		.attr('id', 'hover_text')
+		.attr('x', x_ + l)
+		.attr('y', y_ + l)
+		.text(d)
+		.attr('font-family', 'sans-serif')
+		.attr('font-size', '32px')
+		.style('text-anchor', 'middle')
+		.style('fill', 'black')
+}
+
+/* Reduced tile must be recovered and text removed */
+function handle_mouse_out(d, i) {
+	d3.select(this)
+		.attr('x', parseFloat(this.attributes.x.value) + l/2)
+		.attr('y', parseFloat(this.attributes.y.value) + l/2)
+		.attr('width', l)
+		.attr('height', l)
+		
+	d3.select('text#hover_text').remove()
+}
+
+/* Prints error message in the center of the canvas if data is not passed properly */
+function draw_error() {
+	var text = d3.select('svg')
+		.append('text')
+		.attr('x', L/2)
+		.attr('y', L/2)
+		.text(error_message)
+		.attr('font-family', 'sans-serif')
+		.attr('font-size', '32px')
+		.style('text-anchor', 'middle')
+		.style('fill', 'red')
+}
+
+/* Main code */
+create_canvas(L, L)
+if (sanity_check()) {
+	draw_axes()
+	draw_tiles()
+} else {
+	draw_error()
+}
+
+</script>
+
+</body>
+
+</html>

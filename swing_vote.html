@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Electoral swing in Spanish parties</title>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+</head>
+
+<body>
+
+<p>
+Electoral swing in Spanish parties, comparing actual vote in the last general election (2016)
+with their vote intention in July, 2017. <br> Data from Metroscopia, July 2017.
+</p>
+
+<figure class=chart></figure>
+
+<script type="text/javascript">
+
+/* Data */
+var actualVote = [7906185, 5424709, 5049734, 3123769];
+var swingVote = [[0.65, 0.01, 0.01, 0.13, 0.15], [0.02, 0.62, 0.06, 0.08, 0.19], 
+		[0, 0.1, 0.71, 0.01, 0.12], [0.03, 0.03, 0.01, 0.78, 0.12], [0.08, 0.08, 0.13, 0.04, 0.51]];
+
+/* Global variables */
+var L = 1000
+var circlesScale = d3.scaleLinear()
+	.domain(d3.extent(actualVote))
+	.range([L/12, L/6])
+var strokeColor = ['#1a4b9b', '#9b1919', '#57179b', '#9b7a18']
+var fillColor = ['#4f7bff', '#ff4f4f', '#a44fff', '#ffa14f']
+
+/* Functions */
+
+function draw_canvas() {
+	var svg = d3.select('figure')
+		.append('svg')
+		.attr('width', L)
+		.attr('height', L)
+		
+	var border = svg.append('rect')
+		.attr('x', 0)
+		.attr('y', 0)
+		.attr('width', L)
+		.attr('height', L)
+		.attr('id', 'border')
+		.style('stroke', 'black')
+		.style('fill', 'none')
+		.style('stroke-width', 1)
+}
+
+function draw_parties() {
+	var circles = d3.select('svg')
+		.selectAll('circle')
+		.data(actualVote)
+		.enter()
+		.append('circle')
+		.attr('cx', function(d,i) {
+			if (i%2==0) { return L / 6; }	// 1st and 3rd placed left
+			else { return 5/6 * L; }	// 2nd and 4th placed right
+		})
+		.attr('cy', function(d,i) {
+			if (i<2) { return L/6; }	// 1st and 2nd placed above
+			else { return 5/6 * L; }	// 3rd and 4th placed below
+		})
+		.attr('r', function(d) { return circlesScale(d); })		// Radius proportional to votes
+		.style('stroke', function(d,i) { return strokeColor[i]; })
+		.style('fill', function(d,i) { return fillColor[i]; })
+		.style('stroke-width', 1)
+}
+
+function draw_arrows() {
+
+}
+
+/* Main code */
+draw_canvas()
+draw_parties()
+draw_arrows()
+
+</script>
+
+</body>
+
+</html>
